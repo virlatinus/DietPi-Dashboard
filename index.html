@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=480, height=320, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Pi Display (480x320)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      /* Fixed to 480x320 explicitly */
+      width: 480px;
+      height: 320px;
+      overflow: hidden;
+      background: radial-gradient(circle at top right, #1e293b, #090d16);
+      color: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none;
+      cursor: none;
+      /* Ideal for Pi kiosk mode */
+    }
+
+    .carousel {
+      display: flex;
+      width: 960px;
+      /* 2 pages of 480px */
+      height: 320px;
+      transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .page {
+      width: 480px;
+      height: 320px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 18px 24px;
+    }
+
+    .pagination {
+      position: absolute;
+      bottom: 8px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transition: background 0.3s;
+    }
+
+    .dot.active {
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    /* Dashboard Styles */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .metric-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .metric-graph {
+      height: 30px;
+      width: 100%;
+    }
+
+    .metric-graph svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+      overflow: visible;
+    }
+
+    .metric-icon {
+      color: #38bdf8;
+      display: flex;
+    }
+
+    .metric-icon svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .services-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .service-badge {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #e2e8f0;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .status-up {
+      color: #22c55e;
+    }
+
+    .status-down {
+      color: #ef4444;
+    }
+
+    /* Top Section: Location & Status */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      font-weight: 500;
+      color: #94a3b8;
+    }
+
+    .location {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      background: #f59e0b;
+      /* Starts orange (connecting) */
+      border-radius: 50%;
+      box-shadow: 0 0 8px #f59e0b;
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .refresh-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .refresh-btn:active {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(0.92);
+    }
+
+    .refresh-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Center Section: Big Time & Date */
+    .time-container {
+      text-align: center;
+      margin-top: -8px;
+    }
+
+    .time {
+      font-size: 88px;
+      /* Slightly reduced to guarantee seconds fit on 480px */
+      font-weight: 800;
+      letter-spacing: -3px;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: #ffffff;
+      text-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+    }
+
+    .time span.seconds {
+      font-size: 38px;
+      font-weight: 700;
+      color: #94a3b8;
+      /* Dimmer text for seconds */
+      margin-left: 2px;
+      letter-spacing: -1px;
+    }
+
+    .time span.ampm {
+      font-size: 26px;
+      font-weight: 600;
+      color: #38bdf8;
+      margin-left: 6px;
+      letter-spacing: normal;
+    }
+
+    .date {
+      font-size: 20px;
+      font-weight: 500;
+      color: #94a3b8;
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+    }
+
+    .ip-address {
+      font-size: 14px;
+      font-weight: 500;
+      color: #64748b;
+      margin-top: 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      letter-spacing: 0.5px;
+    }
+
+    /* Bottom Section: Weather Card */
+    .weather-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .weather-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .weather-icon {
+      font-size: 38px;
+      line-height: 1;
+    }
+
+    .weather-temp {
+      font-size: 36px;
+      font-weight: 700;
+      color: #f8fafc;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .weather-right {
+      text-align: right;
+    }
+
+    .weather-desc {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+
+    .weather-extra {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 3px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="carousel" id="carousel">
+    <div class="page" id="page-clock">
+      <!-- Top bar -->
+      <div class="header">
+        <div class="location">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span>Guatemala City, GT</span>
+        </div>
+        <div class="status-group">
+          <button class="refresh-btn" onclick="location.reload()" aria-label="Refresh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+              stroke-linejoin="round">
+              <path d="M21 2v6h-6"></path>
+              <path d="M3 12a9 9 0 1 0 2.13-5.83L2 12"></path>
+              <path d="M3 22v-6h6"></path>
+              <path d="M21 12a9 9 0 1 0-2.13 5.83L22 12"></path>
+            </svg>
+          </button>
+          <div class="status-dot" id="live-indicator" title="Network Status"></div>
+        </div>
+      </div>
+
+      <!-- Center Clock & Date -->
+      <div class="time-container">
+        <div class="time">
+          <span id="hours-mins">--:--</span><span id="seconds" class="seconds"></span><span class="ampm"
+            id="ampm"></span>
+        </div>
+        <div class="date" id="date">Loading date...</div>
+        <div class="ip-address" id="ip-address">IP: --</div>
+      </div>
+
+      <!-- Bottom Weather Bar -->
+      <div class="weather-card">
+        <div class="weather-left">
+          <div class="weather-icon" id="weather-icon">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 12.5a4.5 4.5 0 0 1 4.5-4.5M8 8a9 9 0 0 1 9 9M8 4a13 13 0 0 1 13 13" />
+              <circle cx="5" cy="19" r="2" />
+            </svg>
+          </div>
+          <div class="weather-temp" id="weather-temp">--°C</div>
+        </div>
+        <div class="weather-right">
+          <div class="weather-desc" id="weather-desc">Connecting...</div>
+          <div class="weather-extra" id="weather-extra">Waiting for Network</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page" id="page-dashboard">
+      <div class="header">
+        <div class="location" style="color: #38bdf8;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>System Monitor</span>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <div class="metric-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                <rect x="9" y="9" width="6" height="6"></rect>
+                <line x1="9" y1="1" x2="9" y2="4"></line>
+                <line x1="15" y1="1" x2="15" y2="4"></line>
+                <line x1="9" y1="20" x2="9" y2="23"></line>
+                <line x1="15" y1="20" x2="15" y2="23"></line>
+                <line x1="20" y1="9" x2="23" y2="9"></line>
+                <line x1="20" y1="14" x2="23" y2="14"></line>
+                <line x1="1" y1="9" x2="4" y2="9"></line>
+                <line x1="1" y1="14" x2="4" y2="14"></line>
+              </svg>
+            </div>
+            <div class="metric-info">
+              <div class="metric-value" id="cpu-val">--%</div>
+              <div class="metric-label">CPU Load</div>
+            </div>
+          </div>
+          <div class="metric-graph"><svg id="cpu-graph"></svg></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-header">
+            <div class="metric-icon" style="color: #f59e0b;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+              </svg>
+            </div>
+            <div class="metric-info">
+              <div class="metric-value" id="temp-val">--°C</div>
+              <div class="metric-label">Temperature</div>
+            </div>
+          </div>
+          <div class="metric-graph"><svg id="temp-graph"></svg></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-header">
+            <div class="metric-icon" style="color: #a855f7;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M4 6h16v12H4z"></path>
+                <path d="M8 6V4"></path>
+                <path d="M16 6V4"></path>
+                <path d="M4 10h16"></path>
+                <path d="M4 14h16"></path>
+              </svg>
+            </div>
+            <div class="metric-info">
+              <div class="metric-value" id="ram-val">--%</div>
+              <div class="metric-label">Memory</div>
+            </div>
+          </div>
+          <div class="metric-graph"><svg id="ram-graph"></svg></div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-header">
+            <div class="metric-icon" style="color: #10b981;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M22 12H2"></path>
+                <path
+                  d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z">
+                </path>
+                <line x1="6" y1="16" x2="6.01" y2="16"></line>
+                <line x1="10" y1="16" x2="14" y2="16"></line>
+              </svg>
+            </div>
+            <div class="metric-info">
+              <div class="metric-value" id="disk-val">--%</div>
+              <div class="metric-label">Storage</div>
+            </div>
+          </div>
+          <div class="metric-graph"><svg id="disk-graph"></svg></div>
+        </div>
+      </div>
+
+      <div class="services-row">
+        <div class="service-badge">
+          Vaultwarden <span class="badge-status status-down" id="vault-status">Checking</span>
+        </div>
+        <div class="service-badge">
+          Tailscale <span class="badge-status status-down" id="tail-status">Checking</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pagination">
+    <div class="dot active" id="dot-clock"></div>
+    <div class="dot" id="dot-dashboard"></div>
+  </div>
+
+  <script>
+    // 1. Real-time Clock
+    function updateClock() {
+      const now = new Date();
+
+      // Format Time (12-hour format with AM/PM)
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0'); // Get seconds
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 becomes 12
+
+      document.getElementById('hours-mins').textContent = `${hours}:${minutes}`;
+      document.getElementById('seconds').textContent = `:${seconds}`; // Update DOM with seconds
+      document.getElementById('ampm').textContent = ampm;
+
+      // Format Date: e.g., "Friday, Aug 21, 2026"
+      const options = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+      document.getElementById('date').textContent = now.toLocaleDateString('en-US', options);
+    }
+
+    // 2. Weather Code Translator (WMO Weather interpretation codes)
+    const weatherIcons = {
+      satellite: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5a4.5 4.5 0 0 1 4.5-4.5M8 8a9 9 0 0 1 9 9M8 4a13 13 0 0 1 13 13"/><circle cx="5" cy="19" r="2"/></svg>`,
+      sun: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`,
+      cloudSun: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="M20 12h2"></path><path d="m19.07 4.93-1.41 1.41"></path><path d="M15.94 13A7.14 7.14 0 0 0 10 7.42"></path><path d="M6 13a4 4 0 0 0 4 4h8a4 4 0 0 0 0-8h-1"></path></svg>`,
+      cloud: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`,
+      rain: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 13v8"/><path d="M8 13v8"/><path d="M12 15v8"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg>`,
+      storm: `<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><polyline points="13 11 9 17 15 17 11 23"/></svg>`
+    };
+
+    function decodeWmo(code) {
+      switch (code) {
+        case 0: return { desc: 'Clear Sky', icon: weatherIcons.sun };
+        case 1: return { desc: 'Mainly Clear', icon: weatherIcons.sun };
+        case 2: return { desc: 'Partly Cloudy', icon: weatherIcons.cloudSun };
+        case 3: return { desc: 'Overcast', icon: weatherIcons.cloud };
+        case 45: case 48: return { desc: 'Foggy', icon: weatherIcons.cloud };
+        case 51: case 53: case 55: return { desc: 'Drizzle', icon: weatherIcons.rain };
+        case 61: case 63: case 65: return { desc: 'Rain', icon: weatherIcons.rain };
+        case 80: case 81: case 82: return { desc: 'Showers', icon: weatherIcons.rain };
+        case 95: case 96: case 99: return { desc: 'Thunderstorm', icon: weatherIcons.storm };
+        default: return { desc: 'Cloudy', icon: weatherIcons.cloud };
+      }
+    }
+
+    // 3. Live Weather Fetch with Auto-Retry
+    let weatherTimeout;
+
+    async function fetchWeather() {
+      clearTimeout(weatherTimeout);
+
+      const lat = 14.6349;
+      const lon = -90.5069;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=America%2FGuatemala`;
+
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('API Error');
+        const data = await res.json();
+
+        const current = data.current;
+        const temp = Math.round(current.temperature_2m);
+        const humidity = current.relative_humidity_2m;
+        const weatherInfo = decodeWmo(current.weather_code);
+
+        // Update DOM
+        document.getElementById('weather-temp').textContent = `${temp}°C`;
+        document.getElementById('weather-icon').innerHTML = weatherInfo.icon;
+        document.getElementById('weather-desc').textContent = weatherInfo.desc;
+        document.getElementById('weather-extra').textContent = `Humidity: ${humidity}%`;
+
+        // Network dot turns green
+        const dot = document.getElementById('live-indicator');
+        dot.style.background = '#22c55e';
+        dot.style.boxShadow = '0 0 8px #22c55e';
+
+        // Success: check again in 15 mins (900,000 ms)
+        weatherTimeout = setTimeout(fetchWeather, 15 * 60 * 1000);
+
+      } catch (err) {
+        if (document.getElementById('weather-temp').textContent === '--°C') {
+          document.getElementById('weather-desc').textContent = 'Connecting...';
+        }
+
+        // Network dot turns red to indicate connection drop
+        const dot = document.getElementById('live-indicator');
+        dot.style.background = '#ef4444';
+        dot.style.boxShadow = '0 0 8px #ef4444';
+
+        // Fail: Pi is likely booting and Wi-Fi isn't up yet. Retry aggressively in 10 seconds.
+        weatherTimeout = setTimeout(fetchWeather, 10000);
+      }
+    }
+
+    // 4. Fetch System Data (data.json)
+    let dataTimeout;
+    async function fetchSystemData() {
+      clearTimeout(dataTimeout);
+      const ipElement = document.getElementById('ip-address');
+      try {
+        const res = await fetch('data.json?t=' + new Date().getTime());
+        if (!res.ok) throw new Error('File not found');
+        const data = await res.json();
+
+        if (data.ip) ipElement.textContent = `IP: ${data.ip}`;
+        if (data.cpu !== undefined) document.getElementById('cpu-val').textContent = `${data.cpu}%`;
+        if (data.temp !== undefined) document.getElementById('temp-val').textContent = `${data.temp}°C`;
+        if (data.ram !== undefined) document.getElementById('ram-val').textContent = `${data.ram}%`;
+        if (data.disk !== undefined) document.getElementById('disk-val').textContent = `${data.disk}%`;
+
+        if (data.history) {
+          drawSparkline(document.getElementById('cpu-graph'), data.history.cpu, '#38bdf8', 0, 100);
+          drawSparkline(document.getElementById('temp-graph'), data.history.temp, '#f59e0b', 30, 80);
+          drawSparkline(document.getElementById('ram-graph'), data.history.ram, '#a855f7', 0, 100);
+          drawSparkline(document.getElementById('disk-graph'), data.history.disk, '#10b981', 0, 100);
+        }
+
+        if (data.services) {
+          const vaultSpan = document.getElementById('vault-status');
+          vaultSpan.textContent = data.services.vaultwarden ? 'Active' : 'Down';
+          vaultSpan.className = 'badge-status ' + (data.services.vaultwarden ? 'status-up' : 'status-down');
+
+          const tailSpan = document.getElementById('tail-status');
+          tailSpan.textContent = data.services.tailscale ? 'Active' : 'Down';
+          tailSpan.className = 'badge-status ' + (data.services.tailscale ? 'status-up' : 'status-down');
+        }
+      } catch (e) {
+        ipElement.textContent = 'IP: Not Available';
+      }
+      dataTimeout = setTimeout(fetchSystemData, 10000);
+    }
+
+    function drawSparkline(svgElement, data, color, minVal, maxVal) {
+      if (!data || data.length === 0 || !svgElement) return;
+
+      const width = 100;
+      const height = 30;
+
+      svgElement.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svgElement.setAttribute('preserveAspectRatio', 'none');
+      svgElement.innerHTML = '';
+
+      let dataMin = Math.min(...data);
+      let dataMax = Math.max(...data);
+
+      if (minVal !== undefined) dataMin = Math.min(dataMin, minVal);
+      if (maxVal !== undefined) dataMax = Math.max(dataMax, maxVal);
+
+      if (dataMax === dataMin) {
+        dataMax += 1;
+        dataMin = Math.max(0, dataMin - 1);
+      }
+
+      const range = dataMax - dataMin;
+
+      const points = data.map((val, i) => {
+        const x = data.length > 1 ? (i / (data.length - 1)) * width : 0;
+        const y = height - ((val - dataMin) / range) * height;
+        return { x, y };
+      });
+
+      const gradientId = 'grad-' + Math.random().toString(36).substr(2, 9);
+
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      defs.innerHTML = `
+          <linearGradient id="${gradientId}" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="${color}" stop-opacity="0.0"/>
+          </linearGradient>
+      `;
+      svgElement.appendChild(defs);
+
+      const fillPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      let dFill = `M${points[0].x},${height} L${points[0].x},${points[0].y} `;
+      for (let i = 1; i < points.length; i++) {
+        dFill += `L${points[i].x},${points[i].y} `;
+      }
+      dFill += `L${points[points.length - 1].x},${height} Z`;
+
+      fillPath.setAttribute('d', dFill);
+      fillPath.setAttribute('fill', `url(#${gradientId})`);
+      svgElement.appendChild(fillPath);
+
+      const linePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      let dLine = `M${points[0].x},${points[0].y} `;
+      for (let i = 1; i < points.length; i++) {
+        dLine += `L${points[i].x},${points[i].y} `;
+      }
+      linePath.setAttribute('d', dLine);
+      linePath.setAttribute('fill', 'none');
+      linePath.setAttribute('stroke', color);
+      linePath.setAttribute('stroke-width', '1.5');
+      linePath.setAttribute('stroke-linejoin', 'round');
+      linePath.setAttribute('vector-effect', 'non-scaling-stroke');
+      svgElement.appendChild(linePath);
+    }
+
+    // 5. Swipe Navigation
+    let startX = 0;
+    let currentX = 0;
+    let isDragging = false;
+    let currentPage = 0; // 0 = Clock, 1 = Dashboard
+    const carousel = document.getElementById('carousel');
+    const dotClock = document.getElementById('dot-clock');
+    const dotDashboard = document.getElementById('dot-dashboard');
+
+    function handleDragStart(clientX) {
+      startX = clientX;
+      isDragging = true;
+      carousel.style.transition = 'none';
+    }
+
+    function handleDragMove(clientX) {
+      if (!isDragging) return;
+      currentX = clientX;
+      const diff = currentX - startX;
+      let translate = (currentPage * -480) + diff;
+
+      // Add resistance at edges
+      if (translate > 0) translate = translate * 0.3;
+      if (translate < -480) translate = -480 + ((translate + 480) * 0.3);
+
+      carousel.style.transform = `translateX(${translate}px)`;
+    }
+
+    function handleDragEnd() {
+      if (!isDragging) return;
+      isDragging = false;
+      const diff = currentX - startX;
+
+      carousel.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+
+      if (diff < -50 && currentPage === 0) {
+        currentPage = 1; // Swipe left to Dashboard
+      } else if (diff > 50 && currentPage === 1) {
+        currentPage = 0; // Swipe right to Clock
+      }
+
+      carousel.style.transform = `translateX(${currentPage * -480}px)`;
+      dotClock.classList.toggle('active', currentPage === 0);
+      dotDashboard.classList.toggle('active', currentPage === 1);
+    }
+
+    // Use Pointer Events to handle both mouse and touch transparently
+    document.addEventListener('pointerdown', e => handleDragStart(e.clientX));
+    document.addEventListener('pointermove', e => handleDragMove(e.clientX));
+    document.addEventListener('pointerup', handleDragEnd);
+    document.addEventListener('pointercancel', handleDragEnd);
+
+    // Initialize
+    updateClock();
+    setInterval(updateClock, 1000);
+    fetchWeather();
+    fetchSystemData();
+
+  </script>
+</body>
+
+</html>
