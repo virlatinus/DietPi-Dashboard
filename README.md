@@ -2,6 +2,9 @@
 
 A lightweight, 480x320 optimized web dashboard designed for a Raspberry Pi kiosk display (such as a DietPi setup). 
 
+![Clock View](screenshot1.png)
+![Dashboard View](screenshot2.png)
+
 ## Features
 - **Real-time Clock & Date**: Clean and prominent display with automatic network status indicators.
 - **Weather Integration**: Live weather updates using the Open-Meteo API.
