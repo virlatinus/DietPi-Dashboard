@@ -318,11 +318,14 @@
           blackMsg.style.opacity = '0';
         }, 3000);
 
-        fetch(pendingCommandUrl, { method: 'POST' }).then(() => {
-          console.log('Command sent:', pendingCommandUrl);
-        }).catch(err => {
-          console.error('Failed to send command:', err);
-        });
+        const urlToFetch = pendingCommandUrl;
+        setTimeout(() => {
+          fetch(urlToFetch, { method: 'POST' }).then(() => {
+            console.log('Command sent:', urlToFetch);
+          }).catch(err => {
+            console.error('Failed to send command:', err);
+          });
+        }, 1500);
       }
       pendingCommandUrl = null;
     }
