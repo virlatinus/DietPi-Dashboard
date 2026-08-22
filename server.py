@@ -1,3 +1,4 @@
+import os
 import http.server
 import socketserver
 import subprocess
@@ -5,6 +6,8 @@ import json
 import sys
 
 PORT = 8080
+DIRECTORY = os.path.dirname(os.path.abspath(__file__))
+
 if len(sys.argv) > 1:
     try:
         PORT = int(sys.argv[1])
@@ -12,6 +15,7 @@ if len(sys.argv) > 1:
         pass
 
 class APIHandler(http.server.SimpleHTTPRequestHandler):
+
     def do_POST(self):
         if self.path == '/api/reboot':
             self.send_response(200)
@@ -30,6 +34,9 @@ class APIHandler(http.server.SimpleHTTPRequestHandler):
             
         self.send_response(404)
         self.end_headers()
+
+# Change to the script's directory so systemd serves the correct files
+os.chdir(DIRECTORY)
 
 with socketserver.TCPServer(("", PORT), APIHandler) as httpd:
     print(f"Serving at port {PORT}. Replaces 'python -m http.server'")
