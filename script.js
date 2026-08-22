@@ -318,6 +318,7 @@
           blackMsg.style.opacity = '0';
         }, 3000);
 
+        // Send command after message has fully faded (3s + 1s CSS transition)
         const urlToFetch = pendingCommandUrl;
         setTimeout(() => {
           fetch(urlToFetch, { method: 'POST' }).then(() => {
@@ -325,7 +326,7 @@
           }).catch(err => {
             console.error('Failed to send command:', err);
           });
-        }, 1500);
+        }, 4000);
       }
       pendingCommandUrl = null;
     }
