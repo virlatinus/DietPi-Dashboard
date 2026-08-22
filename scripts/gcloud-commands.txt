@@ -1,0 +1,50 @@
+gcloud storage buckets notifications create gs://werner-backups \
+    --topic=new-backup \
+        --event-types=OBJECT_FINALIZE
+
+
+gcloud functions deploy gcs-to-email-worker \
+    --runtime=nodejs22 \
+        --trigger-topic=new-backup \
+	    --entry-point=sendEmailOnUpload \
+	        --region=us-central1 \
+		    --set-env-vars SENDGRID_API_KEY="SG.BLAH-BLAH-BLAH.MY-KEY-HERE" \
+		        --gen2
+
+gcloud functions logs read gcs-to-email-worker \
+    --region=us-central1 \
+    --limit=20
+
+
+gcloud functions add-invoker-policy-binding gcs-to-email-worker \
+    --region=us-central1 \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+
+
+export PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format="value(projectNumber)")
+
+
+gcloud functions add-iam-policy-binding gcs-to-email-worker \
+    --region=us-central1 \
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@gserviceaccount.com" \
+    --role="roles/run.invoker"
+
+
+
+
+gcloud functions deploy gcs-to-email-worker \
+    --runtime=nodejs22 \
+    --trigger-topic=new-backup \
+    --entry-point=sendEmailOnUpload \
+    --region=us-central1 \
+    --set-env-vars SENDGRID_API_KEY="BLAH-BLAH-BLAH.MY-KEY-HERE" \
+    --gen2
+
+
+
+## Override variable
+
+gcloud functions deploy gcs-to-email-worker \
+    --region=us-central1 \
+    --update-env-vars SENDGRID_API_KEY="BLAH-BLAH-BLAH.MY-KEY-HERE"
