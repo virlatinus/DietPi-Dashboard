@@ -312,10 +312,97 @@
       margin-top: 3px;
       font-weight: 500;
     }
+
+    /* Settings Overlay */
+    .settings-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 480px;
+      height: 320px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+      transform: translateY(-100%);
+      transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .settings-header {
+      font-size: 24px;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .settings-buttons {
+      display: flex;
+      gap: 20px;
+      flex: 1;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .settings-btn {
+      flex: 1;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      color: #f8fafc;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .settings-btn:active {
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(0.95);
+    }
+
+    .settings-btn svg {
+      width: 40px;
+      height: 40px;
+      color: #38bdf8;
+    }
+    
+    #btn-poweroff svg {
+      color: #ef4444;
+    }
   </style>
 </head>
 
 <body>
+
+  <div class="settings-overlay" id="settings-overlay">
+    <div class="settings-header">Settings</div>
+    <div class="settings-buttons">
+      <button class="settings-btn" id="btn-poweroff" onclick="sendCommand('/api/poweroff')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+          <line x1="12" y1="2" x2="12" y2="12"></line>
+        </svg>
+        Power Off
+      </button>
+      <button class="settings-btn" id="btn-reboot" onclick="sendCommand('/api/reboot')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1 4 1 10 7 10"></polyline>
+          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+        </svg>
+        Reboot
+      </button>
+    </div>
+  </div>
 
   <div class="carousel" id="carousel">
     <div class="page" id="page-clock">
@@ -684,55 +771,109 @@
 
     // 5. Swipe Navigation
     let startX = 0;
+    let startY = 0;
     let currentX = 0;
+    let currentY = 0;
     let isDragging = false;
+    let swipeDirection = null; // 'horizontal' or 'vertical'
     let currentPage = 0; // 0 = Clock, 1 = Dashboard
+    let isSettingsVisible = false;
     const carousel = document.getElementById('carousel');
+    const settingsOverlay = document.getElementById('settings-overlay');
     const dotClock = document.getElementById('dot-clock');
     const dotDashboard = document.getElementById('dot-dashboard');
 
-    function handleDragStart(clientX) {
-      startX = clientX;
+    function handleDragStart(e) {
+      startX = e.clientX;
+      startY = e.clientY;
       isDragging = true;
+      swipeDirection = null;
       carousel.style.transition = 'none';
+      settingsOverlay.style.transition = 'none';
     }
 
-    function handleDragMove(clientX) {
+    function handleDragMove(e) {
       if (!isDragging) return;
-      currentX = clientX;
-      const diff = currentX - startX;
-      let translate = (currentPage * -480) + diff;
+      currentX = e.clientX;
+      currentY = e.clientY;
+      
+      const diffX = currentX - startX;
+      const diffY = currentY - startY;
 
-      // Add resistance at edges
-      if (translate > 0) translate = translate * 0.3;
-      if (translate < -480) translate = -480 + ((translate + 480) * 0.3);
+      if (!swipeDirection) {
+        if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+          swipeDirection = Math.abs(diffX) > Math.abs(diffY) ? 'horizontal' : 'vertical';
+        }
+      }
 
-      carousel.style.transform = `translateX(${translate}px)`;
+      if (swipeDirection === 'horizontal' && !isSettingsVisible) {
+        let translate = (currentPage * -480) + diffX;
+        if (translate > 0) translate = translate * 0.3;
+        if (translate < -480) translate = -480 + ((translate + 480) * 0.3);
+        carousel.style.transform = `translateX(${translate}px)`;
+      } else if (swipeDirection === 'vertical') {
+        if (!isSettingsVisible && diffY > 0) {
+          // Pulling down from top
+          let translate = -320 + diffY;
+          if (translate > 0) translate = translate * 0.3;
+          settingsOverlay.style.transform = `translateY(${translate}px)`;
+        } else if (isSettingsVisible && diffY < 0) {
+          // Pushing up from bottom
+          let translate = diffY;
+          if (translate < -320) translate = -320 + ((translate + 320) * 0.3);
+          settingsOverlay.style.transform = `translateY(${translate}px)`;
+        }
+      }
     }
 
     function handleDragEnd() {
       if (!isDragging) return;
       isDragging = false;
-      const diff = currentX - startX;
+      const diffX = currentX - startX;
+      const diffY = currentY - startY;
 
       carousel.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
+      settingsOverlay.style.transition = 'transform 0.4s cubic-bezier(0.25, 1, 0.5, 1)';
 
-      if (diff < -50 && currentPage === 0) {
-        currentPage = 1; // Swipe left to Dashboard
-      } else if (diff > 50 && currentPage === 1) {
-        currentPage = 0; // Swipe right to Clock
+      if (swipeDirection === 'horizontal' && !isSettingsVisible) {
+        if (diffX < -50 && currentPage === 0) {
+          currentPage = 1; // Swipe left to Dashboard
+        } else if (diffX > 50 && currentPage === 1) {
+          currentPage = 0; // Swipe right to Clock
+        }
+        carousel.style.transform = `translateX(${currentPage * -480}px)`;
+        dotClock.classList.toggle('active', currentPage === 0);
+        dotDashboard.classList.toggle('active', currentPage === 1);
+      } else if (swipeDirection === 'vertical') {
+        if (!isSettingsVisible && diffY > 50) {
+          isSettingsVisible = true;
+          settingsOverlay.style.transform = `translateY(0)`;
+        } else if (!isSettingsVisible) {
+          settingsOverlay.style.transform = `translateY(-100%)`;
+        } else if (isSettingsVisible && diffY < -50) {
+          isSettingsVisible = false;
+          settingsOverlay.style.transform = `translateY(-100%)`;
+        } else if (isSettingsVisible) {
+          settingsOverlay.style.transform = `translateY(0)`;
+        }
       }
-
-      carousel.style.transform = `translateX(${currentPage * -480}px)`;
-      dotClock.classList.toggle('active', currentPage === 0);
-      dotDashboard.classList.toggle('active', currentPage === 1);
     }
 
     // Use Pointer Events to handle both mouse and touch transparently
-    document.addEventListener('pointerdown', e => handleDragStart(e.clientX));
-    document.addEventListener('pointermove', e => handleDragMove(e.clientX));
+    document.addEventListener('pointerdown', handleDragStart);
+    document.addEventListener('pointermove', handleDragMove);
     document.addEventListener('pointerup', handleDragEnd);
     document.addEventListener('pointercancel', handleDragEnd);
+
+    function sendCommand(url) {
+      if(confirm('Are you sure you want to execute this command?')) {
+        fetch(url, { method: 'POST' }).then(() => {
+          console.log('Command sent:', url);
+        }).catch(err => {
+          console.error('Failed to send command:', err);
+        });
+      }
+    }
 
     // Initialize
     updateClock();
